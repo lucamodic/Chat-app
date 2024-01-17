@@ -10,23 +10,59 @@ const $messages = document.querySelector('#messages')
 //Templates
 const messageTemplate = document.querySelector('#message-template').innerHTML
 const locationTemplate = document.querySelector('#location-template').innerHTML
+const sidebarTemplate = document.querySelector('#sidebar-template').innerHTML
+
+const autoscroll = () => {
+    //New message
+    const $newMessage = $messages.lastElementChild
+
+    //Height of the new message
+    const newMessageStyles = getComputedStyle($newMessage)
+    const newMessageMargin = parseInt(newMessageStyles.marginBottom)
+    const newMessageHeight = $newMessage.offsetHeight + newMessageMargin
+
+    //Visible height
+    const visibleHeight = $messages.offsetHeight
+
+    //Height of messages container
+    const contentHeight = $messages.scrollHeight
+
+    //How far have I scrolled
+    const scrollOffset = $messages.scrollTop + visibleHeight
+
+    if (contentHeight - newMessageHeight <= scrollOffset) {
+        $messages.scrollTop = $messages.scrollHeight
+    }
+}
 
 socket.on('message', (message) => {
     console.log(message)
     const html = Mustache.render(messageTemplate, {
+        username: message.username,
         message: message.text,
         createdAt: moment(message.createdAt).format('HH:MM')
     })
     $messages.insertAdjacentHTML('beforeend', html)
+    autoscroll()
 })
 
 socket.on('locationMessage', (url) => {
     console.log(url)
     const html = Mustache.render(locationTemplate, {
+        username: url.username,
         url: url.url,
         createdAt: moment(url.createdAt).format('HH:MM')
     })
     $messages.insertAdjacentHTML('beforeend', html)
+    autoscroll()
+})
+
+socket.on('roomData', ({ room, users }) => {
+    const html = Mustache.render(sidebarTemplate, {
+        room, 
+        users
+    })
+    document.querySelector('#sidebar').innerHTML = html
 })
 
 //Options
@@ -70,4 +106,9 @@ $shareLocationButton.addEventListener('click', () => {
     })
 })
 
-socket.emit('enter', { username, room });
+socket.emit('join', { username, room }, (error) => {
+    if (error) {
+        alert(error)
+        location.href = '/'
+    }
+});
